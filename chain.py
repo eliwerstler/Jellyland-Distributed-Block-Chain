@@ -50,6 +50,52 @@ chain: List[Block] = []     # confimed blocks, in order
 orphans: Dict[str, Block] = {}      # blocks whose parent is missing
 pending_proposals: Dict[str, Block] = {}    # proposed but unconfirmed blocks
 
+
+# ---------------------------------------------------------------------------
+
+# MICHAEL HAS WRITTEN THE FOLLOWING FUNCTIONS:
+def format_field(value, size, data_type):
+    """
+    Formats an int or string to a fixed size string for block header
+    """
+def restore_field(value, data_type):
+    """
+    Converts a fixed sized strink back into an int or string
+    This reverses the format_field() function
+    """
+def read_block(block):
+    """
+    Extract the fields from a block
+    Parameters: block: The block to read
+    Returns block_index, block_time, chain_size, previous_hash, data
+    """
+def create_block(data):
+    """
+    Create a block for the blockchain
+    Parameters:  data: The trasaction data from the passenger (arrival/departure info)
+    node_name: The name of the airport
+    """
+def proof_of_work(block: Block) -> Block:
+    """
+    Generate proof of work on the block.
+    Builds the block and adds the hash / finds the right nonce to make all the leading zeros
+    Parameters:  block: The block to perform proof of work on
+    returns:   final_block : finished block with nonce and hash
+    """
+def is_valid_proof(block: Block) -> bool:
+    """
+    Validate the block by checking the proof of work and verifying signature.
+    Parameters:     block: The block string to validate
+    Returns:     True if valid otherwise False
+    """
+def generate_key_pair():
+    """
+    Generates a private and public key pair using ECDSA (secp256k1 curve).
+    Returns: private_pem, public_pem: The private/public keys in PEM format
+    """
+
+# -----------------------------------------------------------------------------------
+
 def creat_genesis_block() -> Block:
     """
     Creates and returns the genesis (first) block of the chain.
