@@ -54,6 +54,14 @@ pending_proposals: Dict[str, Block] = {}    # proposed but unconfirmed blocks
 # ---------------------------------------------------------------------------
 
 # MICHAEL HAS WRITTEN THE FOLLOWING FUNCTIONS:
+
+def compute_hash(data):
+    """
+    Computes SHA-256 hash of the given data and returns the hex digest.
+    Parameters: data: The data to hash
+    Returns: A SHA-256 hash as a hex string
+    """
+    
 def format_field(value, size, data_type):
     """
     Formats an int or string to a fixed size string for block header
