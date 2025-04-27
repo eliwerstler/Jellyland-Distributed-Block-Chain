@@ -14,8 +14,16 @@ Our block is a binary string with the following fields:
 - **Previous Hash** : 32 bytes (256 bits)  
 - **Data** : Variable Size  
 
-The data section include the following fields:  
+The data section includes the following fields:  
 Date of Record, Name, Date of Birth, Nationality, Date of transaction, Visa, Warrant, Status, Action
+
+### Private/Public Key
+We generate a key pair using the python cryptography library and ECDSA (secp256k1 curve). The keys are stored in DER format. The public key is submitted to the tracker when each airport peer registers.
+
+### Block(chain) process
+
+A block is created by concatenating our block format and then iterating through nonces until the has has n zeros at the front, where 'n' is the difficulty level.
+Once found, that nonce and the hash are added to the block.  The block is then signed with the private key.   The hash is added as raw r and s values as they can be represented as fixed length (2 8 32 bit), as opposed to DER-format  which is variable length.  The block is then signed with the peer's private key and that signature is added to the block too.
 
 ### Multiple Transactions per Block  
 If time allows, `airport.py` will wait for multiple new records before writing a new block and then include several records in the block, using a Merkle tree.
