@@ -190,7 +190,9 @@ if __name__ == '__main__':
         #       30  QUERY      - Peer list request ( GUI -> tracker.py -> GUI ) (Also reply)
 
         if msg_type == 10:   #  Airport Registration. Add the airport to the dictionary
-            airport_directory[airport_name] = { 'airport_port': airport_port, 'airport_ip': airport_ip }  # Add the airport to the dictionary}                
+            #airport_directory[airport_name] = { 'airport_port': airport_port, 'airport_ip': airport_ip }  # Add the airport to the dictionary}                
+            airport_directory[airport_name] = { 'airport_port': airport_port, 'airport_ip': airport_ip, 'public_key': payload }  # Add the airport to the dictionary}                
+
 
         if msg_type == 20:   #  Airport De-registration. Remove the airport from the dictionary
             del airport_directory[airport_name]  # Delete the airport from the dictionary}
