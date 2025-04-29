@@ -6,9 +6,7 @@ import datetime
 import json
 import hashlib
 import struct
-from typing import List, Dict, Optional
-from typing import Tuple
-
+from typing import List, Dict, Optional, Tuple
 from config import DIFFICULTY, CHAIN_LOG
 
 # ECDSA crypto for signing/verification
