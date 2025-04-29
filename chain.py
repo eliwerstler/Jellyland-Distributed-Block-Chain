@@ -5,6 +5,7 @@
 
 from typing import List, Dict, Optional
 import time
+import pickle
 from utils import compute_hash, merkle_root
 from config import DIFFICULTY, CHAIN_LOG
 
@@ -42,8 +43,9 @@ class Block:
         Returns the serialized header fields (index, timestamp, previous_hash,
         merkle_root, and nonce) as bytes for hashing.
         """
-        # TODO: pack fields into bytes (e.g., struct.pack)
-        pass
+        header_fields = []
+        header_fields.extend([self.index, self.timestamp, self.previous_hash, self.nonce, self.merkle_root, self.transactions, self.hash])
+        return pickle.dumps(header_fields)
 
 # In-memory chain and auxillary pools
 chain: List[Block] = []     # confimed blocks, in order
