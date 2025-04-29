@@ -43,9 +43,7 @@ class Block:
         Returns the serialized header fields (index, timestamp, previous_hash,
         merkle_root, and nonce) as bytes for hashing.
         """
-        header_fields = []
-        header_fields.extend([self.index, self.timestamp, self.previous_hash, self.nonce, self.merkle_root, self.transactions, self.hash])
-        return pickle.dumps(header_fields)
+        pass
 
 # In-memory chain and auxillary pools
 chain: List[Block] = []     # confimed blocks, in order
