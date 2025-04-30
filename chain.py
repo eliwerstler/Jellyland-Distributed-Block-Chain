@@ -147,23 +147,38 @@ def restore_field(raw: str, data_type: str):
 
 
 # ---------------------------------------------------------------------------
-# Block serialization / inspection
+# Block serialization / inspection 
 
-def read_block(block_str: str):
+def read_block(block):   # MICHAEL AMENDED.  CHARMAPPED FORMAT CHANGED
     """
-    Parse a serialized block string into its components.
-    Returns (index, status, timestamp, chain_size, prev_hash, data, nonce, hash).
+    Extract the fields from a block
+    Parameters: block: The block to read
+    Returns block_index, block_time, chain_size, previous_hash, data
     """
-    idx       = restore_field(block_str[0:4],   "int")
-    status    = restore_field(block_str[4:5],   "int")
-    timestamp = restore_field(block_str[5:25],  "str")
-    chain_sz  = restore_field(block_str[25:29], "int")
-    prev_hash = restore_field(block_str[29:37], "str")
-    dsize     = restore_field(block_str[37:41], "int")
-    data      = restore_field(block_str[41:41+dsize], "str")
-    nonce     = restore_field(block_str[41+dsize:49+dsize], "int")
-    bhash     = restore_field(block_str[49+dsize:], "str")
-    return idx, status, timestamp, chain_sz, prev_hash, data, nonce, bhash
+
+    # Extract the fields from the block
+    idx = restore_field(block[0:4], "int")   # 4 Chars
+    timestamp = restore_field(block[4:23], "str")   # 20 Chars
+    chain_sz = restore_field(block[23:27], "int")  # 4 Chars
+    prev_hash = restore_field(block[27:91], "str")    # 64 Chars
+    d_size = restore_field(block[91:95], "int")   # 4 Chars
+    data = restore_field(block[95:95+d_size], "str")   # Variable Size
+    # nonce = restore_field(block[95+d_size:103+data_size], "int")
+    bhash = restore_field(block[103+d_size:], "str")  # The last 64 characters are the hash
+
+    """
+    # Debug only
+    print(f"\n-----------BLOCK READ----------------")
+    print(f"Index: {idx}  ")
+    print(f"Block Time: {timestamp} Length {len(timestamp)}")
+    print(f"Chain Size: {chain_sz} ")
+    print(f"Previous Hash: {prev_hash} Length {len(prev_hash)}")
+    print(f"Data: {data} Length {len(data)}")
+    print(f"Data Size: {d_size} ")
+    print(f"Block Hash: {bhash} Length {len(bhash)}")
+    print(f"---------------------------------\n")
+    """
+    return idx, timestamp, chain_sz, prev_hash, data, bhash
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +201,7 @@ def create_block(transactions: Dict[str, dict], b_index: int,
         "nonce":        0,
         "private_pem":  private_pem
     }
-    return proof_of_work(block_dict, b_index, c_size, p_hash)
+    return proof_of_work(block_dict, b_index, c_size, p_hash)   # b_index, c_size and p_hash are now derived inside p_o_w
 
 
 def proof_of_work(block_dict: dict, b_index: int, c_size: int, p_hash: str) -> str:
@@ -262,22 +277,26 @@ def is_valid_proof(block_str: str, public_pem: bytes) -> bool:
 # ---------------------------------------------------------------------------
 # Mempool operations
 
-def mempool_push(tx: dict):
+def mempool_push(tx: dict):   # MICHAEL AMENDED
     """
-    Add a transaction dict to the mempool.
+    Add a transaction dict to the mempool
     """
-    mempool[tx["TransID"]] = tx
+    print(f"\nAdding transaction to mempool: {tx['Action']} for {tx['Name']}\n")
+    trans_id = passenger_transaction['TransID']
+    mempool[tx] = tx 
+    mempool[tx]["Status"] = "Ready"  
 
-
-def mempool_pull() -> Tuple[Optional[str], Optional[dict]]:
+def mempool_pull() -> Tuple[Optional[str], Optional[dict]]:  # MICHAEL AMENDED
     """
-    Pull the oldest tx with Status="Ready", mark it Processing, and return it.
+    Pull one 'ready' passenger transaction from mempool for adding to a block
+    Returns: The oldest 'ready' transaction and its Transaction ID
+    and changes its status in mempool to 'processing'
     """
-    for tid, entry in mempool.items():
-        if entry.get("Status") == "Ready":
-            entry["Status"] = "Processing"
-            return tid, entry
-    return None, None
+    for tid, entry in mempool.items(): 
+        if entry.get("Status") == "Ready":      
+            mempool[tid]["Status"] = "Processing"  
+            return tid, entry   
+    return None, None 
 
 
 def ready_blocks() -> Dict[str, dict]:
