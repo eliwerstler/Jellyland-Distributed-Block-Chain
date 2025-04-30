@@ -199,59 +199,83 @@ def propose_block(block):
             print("Skipping Self")
 
 if __name__ == '__main__':
+
+    #Check if the correct number of arguments are provided
     if len(sys.argv) != 5:
         print("\nUsage: python airport_register.py <airport_port_no> <airport_name> <tracker_port> <tracker_addr>\n")
         sys.exit(1)
-
+    # Get the command line arguments
     airport_port_no = int(sys.argv[1])
-    airport_name    = sys.argv[2]
-    tracker_port    = int(sys.argv[3])
-    tracker_addr    = sys.argv[4]
+    airport_name = sys.argv[2]
+    tracker_port = int(sys.argv[3])
+    tracker_addr = sys.argv[4]
+    # Set some default variables / constants
+    airport_connected = False  # Set True once airport 
+    seq_no = random.randint(0, 2**32 - 1)  # Random sequence number
+    ack_no = 0  # Initial acknowledgement number
+    payload = b''  # No payload for registration
+    difficulty = 4 # The number of leading zeros in the hash for proof of work
+    mempool = {}   # This is a queue of pending passenger transactions; a dictionary of dictionaries
+    blockchain = [] # This is a list of dictionaries where we store the chain (multiple blocks) - A LIST NOW NOT A DICT
+    block_index = 0  # Starting block index (height)
 
-    airport_connected = False
-    seq_no = random.randint(0, 2**32 - 1)
-    ack_no = 0
-    payload = b''
+    # Generate key pair
+    private_pem, public_pem = generate_key_pair()  # Generate public/private key pair   
+    airport_directory = { }    # Create a dictionary to hold the peers/airport information which tracker.py sends us
+                          # 'airport_name': airport_name
+                          # 'airport_port': airport_port    
+                          # 'airport_ip': airport_ip   
+                          # 'public_key': public_pem.decode('utf-8')  # Public key in PEM format 
+    
+    print(f"\n\033[37;42;1m [ Airport Peer Initialind : {airport_name}/{airport_port_no}. Tracker: {tracker_port} ] \033[0m\n")
 
-    # Use chain.py’s keygen
-    private_pem, public_pem = generate_key_pair()
+    register(airport_name, airport_port_no, public_pem, "register")   # Register airport with tracker.py
+  
+    # TODO: Placeholder to request existing blockchain from any peer
 
-    airport_directory = {}
-    mempool        = {}
-    blockchain     = {}
-    block_index    = 0
+    # NOTE : Incoming messages may be concatenated, so we need to split them if
+    # more than one comes in at once due to TCP streading. Each message starts with
+    # the JELLYLAND header and ends with a newline character.
 
-    print(f"\n\033[37;42;1m [ Airport Peer Initialized: {airport_name}/{airport_port_no}. Tracker: {tracker_port} ] \033[0m\n")
+    # Now the main program listening loop:
+    while True:  # listen for new messages and check mempool for any new transactions
+   
+        #response = b''  # Initialize response variable
+        # Listen to TCP socket for incoming messages.  
+        seq_no, ack_no, node_name, remote_port, remote_ip, msg_type, payload=receive_message()
+        blockchain_size = len(blockchain)  # Get the height/size of the blockchain (number of blocks)
+        if msg_type != None:            
+            received_message = payload.decode("utf-8").rstrip("\n")  # Removes \n and converts bytes string to string
+            #print(f"Received: {received_message}\n")   # Debug only
 
-    register(airport_name, airport_port_no, public_pem, "register")
+            if msg_type == 30:  # Directory message so update local airport directory
+                received_message = payload.decode("utf-8")  # Converts bytes string to string
+                airport_directory = ast.literal_eval(received_message)  
+                airport_count = print_airports()  # Print the updated directory to terminal
 
-    while True:
-        seq_no, ack_no, node_name, remote_port, remote_ip, msg_type, payload = receive_message()
-        if msg_type is not None:
-            if msg_type == 30:
-                received_message = payload.decode("utf-8")
-                airport_directory = ast.literal_eval(received_message)
-                print_airports()
+            if msg_type == 40:  # Passenger Arrival or Departure
+                received_message = payload.decode("utf-8")  # Converts bytes string to string.    NOTE - ELI SWAPPED THIS LINE WITH THE NEXT AROUND... ??
+                passenger_trans = ast.literal_eval(received_message)  # Convert the passenger data back into a dictionary
+                mempool_push(passenger_trans)  # Add the transaction to the mempool
 
-            if msg_type == 40:
-                passenger_trans = ast.literal_eval(payload.decode("utf-8"))
-                print(f"Received {passenger_trans['Action']} transaction")
-                mempool_push(passenger_trans)
+            if msg_type == 50:  # Block proposal from another airport   
+                # Check if the block is valid - signature okay, hash okay, 
+                # If valid, add it to the blockchain but how do we mark it as 'probation' ??
+                # If invalid, just drop it?
+                block = payload.decode("utf-8")
+                print(f"Received block proposal from {node_name.rstrip()}")
+                             
 
-            mem_ready = ready_blocks()
-            if mem_ready:
-                print(f"\nPulled these ready transactions from mempool: {mem_ready}")
-                time.sleep(0.5)
-
-                chain_size    = len(blockchain)
-                prev_hash     = "EEEE"  # placeholder
-                block_str     = create_block(mem_ready, block_index, chain_size, prev_hash, private_pem)
-                print(f"\nBlock Created and validated: {is_valid_proof(block_str, public_pem)}")
-
+            # Pull all transactions from mempool with status 'Ready' and create a new proposed block:
+            mem_ready = ready_blocks()  # Pull all 'Ready' transactions from mempool
+            if len(mem_ready) > 0: 
+                block = create_block(mem_ready)  
                 idx, status, btime, csz, ph, data, nonce, bhash = read_block(block_str)
-                print(f"Block Index: {idx}, Status: {status}. Created: {btime}, Chain Size: {csz}, Previous Hash: {ph}, Block Hash: {bhash}\n")
+                print(f"\nBlock added to blockchain: {idx}")
+                # Right now we don't record which block each transaction goes into. We might need to in 
+                # case a bloack is rejected/dropped and we need to add the included transactions again.
+                blockchain.append(block)
+                propose_block(block) # Propose new block to all other peer airports
 
-                blockchain[block_index] = block_str
-                block_index += 1
-                print(f"\nBlock added to blockchain: {block_index}")
-                print(f"Current blockchain: {blockchain}")
+                
+  
