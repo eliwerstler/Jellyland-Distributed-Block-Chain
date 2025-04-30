@@ -117,36 +117,86 @@ def register(airport_name, airport_port_no, payload, action):
 
 def receive_message():
     """
-    Receives a message from the remote tracker
+    Receives a message from the remote host
+    Returns seq_no, ack_no, node_name, tcp_rcv_port, msg_type, payload 
+    This is a blocking function which is only used in the registration phase as 
+    receiving messages is handled in the main loop by a threaded function.
     """
-    response = b''
+    response = b''  # Initialize response variable
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as rx_socket:
-            rx_socket.settimeout(2)
-            rx_socket.bind(('', airport_port_no))
-            rx_socket.listen(1)
-            conn, addr = rx_socket.accept()
-            remote_ip, remote_src_port = addr
-            response = conn.recv(2048)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as rx_socket:   # Open the TCP socket connection         
+            rx_socket.settimeout(2)  # Timeout for receiving airport directory back from tracker, else raises an exception
+            rx_socket.bind(('', airport_port_no))  # Bind to the airport's port
+            rx_socket.listen(1)  # Listen for incoming connections
+            #print(f"Listening for tracker response on port {airport_port_no}.")
+            conn, addr = rx_socket.accept()  # Accept an incoming connection
+            remote_ip, remote_src_port = addr  # Get the sender's IP address and src. port number
+            response = conn.recv(2048)  # Receive the response from the remote host
+         
     except socket.timeout:
+        #print("\nSocket Timed Out waiting. Continue to wait.\n ")
         pass
     except socket.error as e:
         print(f"\nSocket error: {e}\n")
-        sys.exit()
+        sys.exit()   # For Debug only
     finally:
+        # Close the socket
         rx_socket.close()
 
     if response:
-        payload = response[struct.calcsize('=9s20sIIIB'):]
-        unpacked = struct.unpack('=9s20sIIIB', response[:struct.calcsize('=9s20sIIIB')])
-        node_name   = unpacked[1].decode('utf-8').strip('\x00')
-        tcp_rcv_port= unpacked[2]
-        seq_no      = unpacked[3]
-        ack_no      = unpacked[4]
-        msg_type    = unpacked[5]
-        return seq_no, ack_no, node_name, tcp_rcv_port, remote_ip, msg_type, payload
+        # Unpack the received message
+        payload = response[struct.calcsize('=9s20sIIIB'):]  # Extract the payload from the response
+        #print(f"\n\033[93mPAYLOAD{payload.decode('utf-8')}\033[0m\n")  # debug
+        # Unpack the header fields
+        unpacked_data = struct.unpack('=9s20sIIIB', response[0:struct.calcsize('=9s20sIIIB')])    
+        node_name = unpacked_data[1].decode('utf-8').strip('\x00')  # Decode and strip padding
+        tcp_rcv_port = unpacked_data[2]
+        seq_no = unpacked_data[3]
+        ack_no = unpacked_data[4]
+        msg_type = unpacked_data[5]
+        return seq_no, ack_no, node_name, tcp_rcv_port, remote_ip, msg_type, payload 
     else:
-        return None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None   # Return None if no response is received
+        
+def get_last_hash():
+    """
+    Get the last hash (the most recently added block) from the blockchain
+    Returns: The previous index no. (int) and hash (string)
+    """
+    if len(blockchain) == 0:
+        return 0, "0"  #  First block so no previous block. Will be stored as 64 chars in block.
+    else:        
+        last_block = blockchain[len(blockchain) - 1]  # Get the last block in the blockchain
+        data_size = restore_field(last_block[91:95], "int")   # Need  data field size to locate relative position of hash
+        last_hash=restore_field(block[103+data_size:], "str")  # Hash field
+        last_index=restore_field(last_block[0:4], "int")   # Index field
+        return last_index, last_hash  # Return the hash of the last block
+        
+def propose_block(block):
+    """
+    Propose new block to all other airport peers
+    Parameters: block
+    """
+    for airport, info in airport_directory.items():
+        ip=info['airport_ip']
+        port=info['airport_port']
+        if port != airport_port_no:
+            # Compile the message:
+            msg_type = 50  # Propose block
+            seq_no = random.randint(0, 2**32 - 1)  # Random sequence number
+            ack_no = 0
+            #payload = block.encode('utf-8')  # Convert block to bytes
+            encoded_msg = encode_msg(airport_name, airport_port_no, seq_no, ack_no, msg_type, payload)
+            print(f"Proposing to : {airport.rstrip()}")
+            # Create a TCP socket and send the registration message
+            try:       
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as send_socket:   # Create a TCP socket
+                    send_socket.connect((ip, port)) # Connect to the remote peer
+                    send_socket.sendall(encoded_msg) # Send the message
+            except socket.error as e:   # Belongs to the 'try'
+                print(f"\033[91m\nSocket error: {e}\nTracker not reachable at {tracker_addr}:{tracker_port}.\033[0m\n")
+        else:
+            print("Skipping Self")
 
 if __name__ == '__main__':
     if len(sys.argv) != 5:
