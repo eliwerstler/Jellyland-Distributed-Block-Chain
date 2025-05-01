@@ -194,9 +194,67 @@ def propose_block(block):
                     send_socket.connect((ip, port)) # Connect to the remote peer
                     send_socket.sendall(encoded_msg) # Send the message
             except socket.error as e:   # Belongs to the 'try'
-                print(f"\033[91m\nSocket error: {e}\nTracker not reachable at {tracker_addr}:{tracker_port}.\033[0m\n")
+                print(f"\033[91m\nSocket error: {e}\nPeer not reachable at {ip}:{port}.\033[0m\n")
         else:
             print("Skipping Self")
+
+def request_blockchain():
+    """
+    Request a copy of the current blockchain from the first peer in the directory
+    Parameters: block
+    """
+    for airport, info in airport_directory.items():
+        ip=info['airport_ip']
+        port=info['airport_port']
+        if port != airport_port_no:
+            pass
+        if airport:  # Check if 'airport' is a non-None string    
+            # Compile the message:
+            msg_type = 80  # Request Chain
+            seq_no = random.randint(0, 2**32 - 1)  # Random sequence number
+            ack_no = 0
+            encoded_msg = encode_msg(airport_name, airport_port_no, seq_no, ack_no, msg_type, payload)
+            print(f"Requested copy of blockchain from : {airport.rstrip()} ({ip}:{port})")
+            # Create a TCP socket and send the registration message
+            try:       
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as send_socket:   # Create a TCP socket
+                    send_socket.connect((ip, port)) # Connect to the remote peer
+                    send_socket.sendall(encoded_msg) # Send the message
+            except socket.error as e:   
+                print(f"\033[91m\nSocket error: {e}\nPeer not reachable at {ip}:{port}.\033[0m\n")
+                return ""
+            seq_no, ack_no, node_name, tcp_rcv_port, tracker_ip, msg_type, payload=receive_message()
+            if msg_type != None:            
+                received_message = payload.decode("utf-8").rstrip("\n")  # Removes \n and converts bytes string to string
+                print(f"Received Blockchain from {node_name}: {received_message}\n")   
+                if msg_type == 85:  # Sharing Blockchain
+                    received_message = payload.decode("utf-8")  # Converts bytes string to string
+                    return ast.literal_eval(received_message)  
+        else:
+            print(f"\n\033[91mNo airport peers found in directory to request blockchain from.\033[0m\n")
+            return ""            
+    return ""  # Return empty string if no peers return a blockchain    
+
+def share_blockchain(ip,port):
+    """
+    Shares a copy of the current blockchain with another peer airport
+    Parameters : ip address and port no. of the peer to send to
+    """
+    if len(blockchain) > 0:
+        # Compile the message:
+        msg_type = 85  # Blockchain delivery
+        seq_no = random.randint(0, 2**32 - 1)  # Random sequence number
+        ack_no = 0
+        payload = blockchain.encode('utf-8')  # Convert block to bytes - Do we need this ??
+        encoded_msg = encode_msg(airport_name, airport_port_no, seq_no, ack_no, msg_type, payload)
+        print(f"Sharing blockchain with {node_name.rstrip()} ({ip}:{port}")  
+        # Create a TCP socket and send the registration message
+        try:       
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as send_socket:   # Create a TCP socket
+                    send_socket.connect((ip, port)) # Connect to the remote peer
+                    send_socket.sendall(encoded_msg) # Send the message
+            except socket.error as e:   # Belongs to the 'try'
+                print(f"\033[91m\nSocket error: {e}\nNode not reachable at {ip}:{port}.\033[0m\n")
 
 if __name__ == '__main__':
 
@@ -264,8 +322,10 @@ if __name__ == '__main__':
                 # If invalid, just drop it?
                 block = payload.decode("utf-8")
                 print(f"Received block proposal from {node_name.rstrip()}")
-                             
 
+            if msg_type == 80:  # Blockchain copy request from from another airport peer              
+                share_blockchain(remote_ip,remote_port)
+                                         
             # Pull all transactions from mempool with status 'Ready' and create a new proposed block:
             mem_ready = ready_blocks()  # Pull all 'Ready' transactions from mempool
             if mem_ready: 
