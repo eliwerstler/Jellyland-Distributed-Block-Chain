@@ -282,9 +282,9 @@ def mempool_push(tx: dict):   # MICHAEL AMENDED
     Add a transaction dict to the mempool
     """
     print(f"\nAdding transaction to mempool: {tx['Action']} for {tx['Name']}\n")
-    trans_id = passenger_transaction['TransID']
-    mempool[tx] = tx 
-    mempool[tx]["Status"] = "Ready"  
+    trans_id = tx['TransID']
+    mempool[trans_id] = tx 
+    mempool[trans_id]["Status"] = "Ready"  
 
 def mempool_pull() -> Tuple[Optional[str], Optional[dict]]:  # MICHAEL AMENDED
     """
