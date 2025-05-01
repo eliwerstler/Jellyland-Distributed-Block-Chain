@@ -269,13 +269,13 @@ if __name__ == '__main__':
             # Pull all transactions from mempool with status 'Ready' and create a new proposed block:
             mem_ready = ready_blocks()  # Pull all 'Ready' transactions from mempool
             if mem_ready: 
-                block_str = create_block(mem_ready)  
-                idx, status, btime, csz, ph, data, nonce, bhash = read_block(block_str)
+                block = create_block(mem_ready)  
+                idx, status, btime, csz, ph, data, nonce, bhash = read_block(block)
                 print(f"\nBlock added to blockchain: {idx}")
                 # Right now we don't record which block each transaction goes into. We might need to in 
                 # case a bloack is rejected/dropped and we need to add the included transactions again.
-                blockchain.append(block_str)
-                propose_block(block_str) # Propose new block to all other peer airports
+                blockchain.append(block)
+                propose_block(block) # Propose new block to all other peer airports
 
                 
   
