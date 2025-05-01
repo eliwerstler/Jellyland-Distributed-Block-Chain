@@ -6,7 +6,8 @@ import datetime
 import json
 import hashlib
 import struct
-from typing import List, Dict, Optional, Tuple
+import os
+from typing import List, Dict, Optional, Tuple, Set
 from config import DIFFICULTY, CHAIN_LOG
 
 # ECDSA crypto for signing/verification
@@ -69,6 +70,10 @@ chain: List[Block] = []                 # confirmed blocks
 orphans: Dict[str, Block] = {}         # blocks whose parent is missing
 pending_proposals: Dict[str, Block] = {}  # proposed but unconfirmed blocks
 mempool: Dict[str, dict] = {}          # pending transactions
+blocks_by_hash: Dict[str, Block] = {}
+cumulative_work: Dict[str, int] = {}
+tips: Set[str] = set()
+main_tip: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -319,13 +324,66 @@ def is_valid_block(new_block: Block, previous_block: Block) -> bool:
     """Checks parent linkage, index continuity, and PoW validity."""
     pass  # TODO
 
+def get_block_work(block: Block) -> int:
+    """
+    Amount of work represented by this block.
+    With static DIFFICULTY, we treat each block as '1' unit of work.
+    """
+    return 1
+
 def add_block(new_block: Block) -> bool:
     """Append or orphan or fork based on parent existence."""
-    pass  # TODO
+    h = new_block.hash
+    parent = new_block.previous_hash
+
+    if h in blocks_by_hash:
+        return False
+    
+    blocks_by_hash[h] = new_block
+
+    parent_work = cumulative_work.get(parent, 0)
+    cumulative_work[h] = parent_work + get_block_work(new_block)
+
+    if parent in tips:
+        tips.remove(parent)
+    tips.add(h)
+
+    children = [ch for ch , blk in orphans.items() if blk.previous_hash == h]
+    for ch in children:
+        child_blk = orphans.pop(ch)
+        add_block(child_blk)
+
+    if parent not in blocks_by_hash:
+        orphans[h] = new_block
+
+    resolve_fork()
+    return True
 
 def resolve_fork() -> None:
     """Adopt the heaviest branch among forks."""
-    pass  # TODO
+    global main_tip, chain
+
+    if not tips:
+        return
+    
+    best_tip = max(tips, key=lambda h: cumulative_work.get(h, 0))
+
+    if main_tip is not None and \
+        cumulative_work.get(best_tip, 0) <= cumulative_work.get(main_tip, 0):
+        return
+    
+    new_chain: List[Block] = []
+    cursor = best_tip
+    while cursor in blocks_by_hash:
+        blk = blocks_by_hash[cursor]
+        new_chain.append(blk)
+        cursor = blk.previous_hash
+
+    new_chain.reverse()
+    chain[:] = new_chain
+    main_tip = best_tip
+
+    print(f"⧫ Reorganized: new tip {best_tip} at height {len(chain)-1}")
 
 def handle_incoming_block(raw_data: bytes) -> None:
     """Deserialize, validate, broadcast approval/rejection."""
@@ -343,9 +401,9 @@ def print_chain() -> None:
     """Debug: print index, hash, tx count for each block."""
     pass  # TODO
 
-def get_chain_height() -> int:
-    """Return current tip height."""
-    return len(chain) - 1
+#def get_chain_height() -> int:
+#    """Return current tip height."""
+#    return len(chain) - 1
 
 def find_block_by_hash(hash_value: str) -> Optional[Block]:
     """Locate a block by its hash in chain or orphans."""
