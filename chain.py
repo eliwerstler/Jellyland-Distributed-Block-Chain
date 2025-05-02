@@ -9,6 +9,7 @@ import struct
 import os
 from typing import List, Dict, Optional, Tuple, Set
 from config import DIFFICULTY, CHAIN_LOG
+import uuid
 
 # ECDSA crypto for signing/verification
 from cryptography.hazmat.primitives import hashes, serialization
@@ -162,14 +163,16 @@ def read_block(block):   # MICHAEL AMENDED.  CHARMAPPED FORMAT CHANGED
     """
 
     # Extract the fields from the block
-    idx = restore_field(block[0:4], "int")   # 4 Chars
-    timestamp = restore_field(block[4:23], "str")   # 20 Chars
-    chain_sz = restore_field(block[23:27], "int")  # 4 Chars
-    prev_hash = restore_field(block[27:91], "str")    # 64 Chars
-    d_size = restore_field(block[91:95], "int")   # 4 Chars
-    data = restore_field(block[95:95+d_size], "str")   # Variable Size
+    idx = restore_field(block[0:4], "int")   # 0-3 : 4 Chars
+    # skip status byte at [4:5]
+    timestamp = restore_field(block[5:25], "str")   # 4-24 : 20 Chars
+    chain_sz = restore_field(block[25:29], "int")  # 25-28 : 4 Chars
+    prev_hash = restore_field(block[29:37], "str")    # 29-36 : 8 Chars
+    d_size = restore_field(block[37:41], "int")   # 37-40 : 4 Chars
+    data = restore_field(block[41:41+d_size], "str")   # 41-(41+d_size-1) : Variable Size
     # nonce = restore_field(block[95+d_size:103+data_size], "int")
-    bhash = restore_field(block[103+d_size:], "str")  # The last 64 characters are the hash
+    start = 41 + d_size + 8
+    bhash = restore_field(block[start:start+64], "str")  # The last 64 characters are the hash
 
     """
     # Debug only
@@ -288,6 +291,9 @@ def mempool_push(tx: dict):   # MICHAEL AMENDED
     """
     print(f"\nAdding transaction to mempool: {tx['Action']} for {tx['Name']}\n")
     trans_id = tx['TransID']
+    if trans_id is None:
+        trans_id = str(uuid.uuid4())
+        tx['TransID'] = trans_id
     mempool[trans_id] = tx 
     mempool[trans_id]["Status"] = "Ready"  
 
@@ -425,7 +431,8 @@ def handle_incoming_block(raw_data: bytes) -> None:
     txs = json.loads(data_json)
 
     # convert timestamp to ms since epoch
-    ts_dt = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+    ts_clean = timestamp_str.strip()
+    ts_dt = datetime.datetime.strptime(ts_clean, "%Y-%m-%d %H:%M:%S")
     ts_ms = int(ts_dt.timestamp() * 1000)
 
     # build block object

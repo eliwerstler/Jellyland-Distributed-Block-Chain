@@ -16,6 +16,7 @@ import socket
 import ast
 import time
 import json  
+import uuid
 
 def send_message(ip, port, msg_type, payload):
     seq_no = 0  # Not used
@@ -86,6 +87,7 @@ def process_passenger(data, airport, action):    # Action when arrival button pr
 
     # Payload (dictionary) to send to the airport
     payload = {
+        "TransID": str(uuid.uuid4()),
         "Action": action, 
         "TimeDate": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         "Airport": airport, 

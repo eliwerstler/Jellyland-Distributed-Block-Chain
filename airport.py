@@ -165,11 +165,13 @@ def get_last_hash():
     Returns: The previous index no. (int) and hash (string)
     """
     if len(blockchain) == 0:
-        return 0, "0"  #  First block so no previous block. Will be stored as 64 chars in block.
+        # pad "0" to 8 chars, like proof_of_work
+        return 0, format_field("0", 8, "str")  #  First block so no previous block. Will be stored as 64 chars in block.
     else:        
-        last_block = blockchain[len(blockchain) - 1]  # Get the last block in the blockchain
-        data_size = restore_field(last_block[91:95], "int")   # Need  data field size to locate relative position of hash
-        last_hash=restore_field(block[103+data_size:], "str")  # Hash field
+        last_block = blockchain[-1]  # Get the last block in the blockchain
+        data_size = restore_field(last_block[37:41], "int")   # Need  data field size to locate relative position of hash
+        start = 41 + data_size + 8
+        last_hash=restore_field(block[start:start+64], "str")  # Hash field
         last_index=restore_field(last_block[0:4], "int")   # Index field
         return last_index, last_hash  # Return the hash of the last block
         
@@ -178,6 +180,7 @@ def propose_block(block):
     Propose new block to all other airport peers
     Parameters: block
     """
+    payload_bytes = block.encode('utf-8') if isinstance(block, str) else block
     for airport, info in airport_directory.items():
         ip=info['airport_ip']
         port=info['airport_port']
@@ -187,7 +190,14 @@ def propose_block(block):
             seq_no = random.randint(0, 2**32 - 1)  # Random sequence number
             ack_no = 0
             #payload = block.encode('utf-8')  # Convert block to bytes
-            encoded_msg = encode_msg(airport_name, airport_port_no, seq_no, ack_no, msg_type, payload)
+            encoded_msg = encode_msg(
+                airport_name, 
+                airport_port_no, 
+                seq_no, 
+                ack_no, 
+                msg_type, 
+                payload_bytes
+            )
             print(f"Proposing to : {airport.rstrip()}")
             # Create a TCP socket and send the registration message
             try:       
@@ -273,8 +283,18 @@ if __name__ == '__main__':
             # Pull all transactions from mempool with status 'Ready' and create a new proposed block:
             mem_ready = ready_blocks()  # Pull all 'Ready' transactions from mempool
             if mem_ready: 
-                block = create_block(mem_ready)  
-                idx, status, btime, csz, ph, data, nonce, bhash = read_block(block)
+                # next index and hash of last block
+                prev_index, prev_hash = get_last_hash()
+                new_index = prev_index + 1
+                # how many blocks we already have
+                c_size = len(blockchain)
+                block = create_block(
+                    mem_ready,
+                    new_index,
+                    c_size,
+                    prev_hash,
+                    private_pem)  
+                idx, timestamp, csz, ph, data, bhash = read_block(block)
                 print(f"\nBlock added to blockchain: {idx}")
                 # Right now we don't record which block each transaction goes into. We might need to in 
                 # case a bloack is rejected/dropped and we need to add the included transactions again.
