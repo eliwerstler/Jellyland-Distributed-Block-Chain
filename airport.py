@@ -34,6 +34,7 @@ from chain import (
     mempool_push,
     mempool_pull,
     ready_blocks,
+    handle_incoming_block,
 )
 
 def encode_msg(airport_name, tcp_rcv_port, seq_no, ack_no, msg_type, payload):
@@ -262,8 +263,11 @@ if __name__ == '__main__':
                 # Check if the block is valid - signature okay, hash okay, 
                 # If valid, add it to the blockchain but how do we mark it as 'probation' ??
                 # If invalid, just drop it?
-                block = payload.decode("utf-8")
+                 
+                block = payload # full serialized block as bytes
                 print(f"Received block proposal from {node_name.rstrip()}")
+                handle_incoming_block(block)
+                continue
                              
 
             # Pull all transactions from mempool with status 'Ready' and create a new proposed block:

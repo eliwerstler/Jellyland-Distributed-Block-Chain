@@ -414,7 +414,45 @@ def resolve_fork() -> None:
 
 def handle_incoming_block(raw_data: bytes) -> None:
     """Deserialize, validate, broadcast approval/rejection."""
-    pass  # TODO
+
+    # Decode into python string
+    block_str = raw_data.decode('utf-8')
+
+    # parse out the fields
+    idx, timestamp_str, chain_sz, prev_hash, data_json, bhash = read_block(block_str)
+
+    # reconstruct transaction dict
+    txs = json.loads(data_json)
+
+    # convert timestamp to ms since epoch
+    ts_dt = datetime.datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+    ts_ms = int(ts_dt.timestamp() * 1000)
+
+    # build block object
+    new_block = Block(
+        index=idx,
+        timestamp=ts_ms,
+        previous_hash=prev_hash,
+        nonce=0,
+        merkle_root="",
+        transactions=txs,
+        hash=bhash
+    )
+
+    # see if we already know its parent
+    parent = blocks_by_hash.get(prev_hash)
+    if parent:
+        # validate index/linkage/PoW/signature
+        if is_valid_block(new_block, parent):
+            add_block(new_block)
+            print(f"Accepted block {idx} @ {bhash[:8]}")
+        else:
+            print("Rejected invalid block {idx} @ {bhash[:8]}")
+
+    else:
+        # parent missing, stash as orphan
+        orphans[bhash] = new_block
+        print(f"Orphaned block {idx} (parent {prev_hash[:8]} not found)")
 
 def save_block_to_disk(block: Block) -> None:
     """Append serialized block to CHAIN_LOG."""
