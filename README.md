@@ -46,19 +46,19 @@ Run scripts in the following order:
    and only displays the online airports, 
    refreshing the list each time a new passenger wants to check in.
 
-python3 tracker.py 60000
+python3 tracker.py 60001
 
 Up to 6 instances of airports, each in its own terminal.
 Their city names are hard-coded so you must use those:
 
-python3 airport.py 50001 Jellyopolis 60000 127.0.0.1
-python3 airport.py 50002 Seaville 60000 127.0.0.1
-python3 airport.py 50003 Lovelytown 60000 127.0.0.1
-python3 airport.py 50004 Busyham 60000 127.0.0.1
-python3 airport.py 50005 Quaintville 60000 127.0.0.1
-python3 airport.py 50006 Smokeville 60000 127.0.0.1
+python3 airport.py 50001 Jellyopolis 60001 localhost
+python3 airport.py 50002 Seaville 60001 localhost
+python3 airport.py 50003 Lovelytown 60001 localhost
+python3 airport.py 50004 Busyham 60001 localhost
+python3 airport.py 50005 Quaintville 60001 localhost
+python3 airport.py 50006 Smokeville 60001 localhost
 
-python3 passenger_gui.py 50010 60000 127.0.0.1
+python3 passenger_gui.py 50010 60001 localhost
 
 When passenger_gui.py executes an arrival or departure, it sends
 the arrival/departure message to the airport.py corresponding 

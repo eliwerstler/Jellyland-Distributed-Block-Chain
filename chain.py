@@ -322,7 +322,34 @@ def ready_blocks() -> Dict[str, dict]:
 
 def is_valid_block(new_block: Block, previous_block: Block) -> bool:
     """Checks parent linkage, index continuity, and PoW validity."""
-    pass  # TODO
+    """
+    Check that:
+        1. index increments by 1
+        2. previous_hash matches
+        3. proof-of-work & signature are valid
+    """
+    # Index continuity
+    if new_block.index != previous_block.index + 1:
+        print(f"Invalid index: {new_block.index} vs {previous_block.index+1}")
+        return False
+    
+    # Parent linkage
+    if new_block.previous_hash != previous_block.index + 1:
+        print("Invalid previous_hash linkage")
+        return False
+    
+    # Recompute and verify proof-of-work & signature
+    body = new_block.header_bytes().decode('latin1') # header_bytes + data are in chain string already
+    # header_bytes is only index|timestamp|prev_hash|merkle|nonce
+    # block string is header + merkle/data/nonce/… so we trust is_valid_proof
+    if not is_valid_proof( previous_block.hash + new_block.header_bytes(), new_block.transactions ):
+        # is_valid_proof takes (block_str, public_pem)
+        block_str = new_block.header_bytes().hex() + new_block.hash
+        if not is_valid_proof(block_str, new_block.public_pem):
+            print("Invalid PoW or signature")
+            return False
+        
+    return True
 
 def get_block_work(block: Block) -> int:
     """
