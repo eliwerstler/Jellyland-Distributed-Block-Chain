@@ -35,15 +35,16 @@ class Block:
       - transactions: List[dict]
       - hash: str            # hex string
     """
+
     def __init__(
-        self,
-        index: int,
-        timestamp: int,
-        previous_hash: str,
-        nonce: int,
-        merkle_root: str,
-        transactions: List[dict],
-        hash: Optional[str] = None
+            self,
+            index: int,
+            timestamp: int,
+            previous_hash: str,
+            nonce: int,
+            merkle_root: str,
+            transactions: List[dict],
+            hash: Optional[str] = None
     ):
         self.index = index
         self.timestamp = timestamp
@@ -68,10 +69,10 @@ class Block:
 
 
 # in-memory data structures
-chain: List[Block] = []                 # confirmed blocks
-orphans: Dict[str, Block] = {}         # blocks whose parent is missing
+chain: List[Block] = []  # confirmed blocks
+orphans: Dict[str, Block] = {}  # blocks whose parent is missing
 pending_proposals: Dict[str, Block] = {}  # proposed but unconfirmed blocks
-mempool: Dict[str, dict] = {}          # pending transactions
+mempool: Dict[str, dict] = {}  # pending transactions
 blocks_by_hash: Dict[str, Block] = {}
 cumulative_work: Dict[str, int] = {}
 tips: Set[str] = set()
@@ -83,7 +84,7 @@ main_tip: Optional[str] = None
 
 def generate_key_pair():
     """
-    Generates ECDSA key pair (secp256k1).  
+    Generates ECDSA key pair (secp256k1).
     Returns: (private_pem, public_pem) in PEM format.
     """
     private_key = ec.generate_private_key(ec.SECP256K1(), default_backend())
@@ -113,21 +114,20 @@ def compute_hash(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def merkle_root(leaves: List[bytes]) -> str:
+def get_merkle_root(leaves: List[bytes]) -> str:
     """
     Compute Merkle root of a list of byte-leaves.
-    TODO: implement full Merkle tree logic here.
     """
-    leaves_copy = copy(leaves)
+    leaves_copy = leaves.copy()
     hashes = []
     if not leaves:
         return compute_hash(b'')
     while len(leaves_copy) > 1:
-        leaves_copy = [(i, j) if j is not None else (i,i) for i, j in zip_longest(leaves_copy[::2], leaves_copy[1::2])]
+        leaves_copy = [(i, j) if j is not None else (i, i) for i, j in zip_longest(leaves_copy[::2], leaves_copy[1::2])]
         for (i, j) in leaves_copy:
             hashes.append(compute_hash(i + j))
         leaves_copy = hashes
-    return leaves[0]
+    return leaves[0].decode()
 
 
 # ---------------------------------------------------------------------------
@@ -160,9 +160,9 @@ def restore_field(raw: str, data_type: str):
 
 
 # ---------------------------------------------------------------------------
-# Block serialization / inspection 
+# Block serialization / inspection
 
-def read_block(block):   # MICHAEL AMENDED.  CHARMAPPED FORMAT CHANGED
+def read_block(block):  # MICHAEL AMENDED.  CHARMAPPED FORMAT CHANGED
     """
     Extract the fields from a block
     Parameters: block: The block to read
@@ -170,16 +170,16 @@ def read_block(block):   # MICHAEL AMENDED.  CHARMAPPED FORMAT CHANGED
     """
 
     # Extract the fields from the block
-    idx = restore_field(block[0:4], "int")   # 0-3 : 4 Chars
+    idx = restore_field(block[0:4], "int")  # 0-3 : 4 Chars
     # skip status byte at [4:5]
-    timestamp = restore_field(block[5:25], "str")   # 4-24 : 20 Chars
+    timestamp = restore_field(block[5:25], "str")  # 4-24 : 20 Chars
     chain_sz = restore_field(block[25:29], "int")  # 25-28 : 4 Chars
-    prev_hash = restore_field(block[29:37], "str")    # 29-36 : 8 Chars
-    d_size = restore_field(block[37:41], "int")   # 37-40 : 4 Chars
-    data = restore_field(block[41:41+d_size], "str")   # 41-(41+d_size-1) : Variable Size
+    prev_hash = restore_field(block[29:37], "str")  # 29-36 : 8 Chars
+    d_size = restore_field(block[37:41], "int")  # 37-40 : 4 Chars
+    data = restore_field(block[41:41 + d_size], "str")  # 41-(41+d_size-1) : Variable Size
     # nonce = restore_field(block[95+d_size:103+data_size], "int")
     start = 41 + d_size + 8
-    bhash = restore_field(block[start:start+64], "str")  # The last 64 characters are the hash
+    bhash = restore_field(block[start:start + 64], "str")  # The last 64 characters are the hash
 
     """
     # Debug only
@@ -207,16 +207,16 @@ def create_block(transactions: Dict[str, dict], b_index: int,
     """
     block_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     block_dict = {
-        "b_index":      b_index,
-        "block_status": 2,   # 2 = proposed
-        "block_time":   block_time,
-        "c_size":       c_size,
-        "p_hash":       p_hash,
-        "data":         transactions,
-        "nonce":        0,
-        "private_pem":  private_pem
+        "b_index": b_index,
+        "block_status": 2,  # 2 = proposed
+        "block_time": block_time,
+        "c_size": c_size,
+        "p_hash": p_hash,
+        "data": transactions,
+        "nonce": 0,
+        "private_pem": private_pem
     }
-    return proof_of_work(block_dict, b_index, c_size, p_hash)   # b_index, c_size and p_hash are now derived inside p_o_w
+    return proof_of_work(block_dict, b_index, c_size, p_hash)  # b_index, c_size and p_hash are now derived inside p_o_w
 
 
 def proof_of_work(block_dict: dict, b_index: int, c_size: int, p_hash: str) -> str:
@@ -230,15 +230,15 @@ def proof_of_work(block_dict: dict, b_index: int, c_size: int, p_hash: str) -> s
 
     while True:
         bstr = (
-            format_field(b_index,  4, "int") +
-            format_field(block_dict["block_status"], 1, "int") +
-            format_field(block_dict["block_time"], 20, "str") +
-            format_field(c_size,       4, "int") +
-            format_field(p_hash,       8, "str") +
-            format_field(len(json.dumps(block_dict["data"])), 4, "int") +
-            format_field(json.dumps(block_dict["data"]),
-                         len(json.dumps(block_dict["data"])), "str") +
-            format_field(nonce,       8, "int")
+                format_field(b_index, 4, "int") +
+                format_field(block_dict["block_status"], 1, "int") +
+                format_field(block_dict["block_time"], 20, "str") +
+                format_field(c_size, 4, "int") +
+                format_field(p_hash, 8, "str") +
+                format_field(len(json.dumps(block_dict["data"])), 4, "int") +
+                format_field(json.dumps(block_dict["data"]),
+                             len(json.dumps(block_dict["data"])), "str") +
+                format_field(nonce, 8, "int")
         )
         bhash = hashlib.sha256(bstr.encode('utf-8')).hexdigest()
 
@@ -267,9 +267,9 @@ def is_valid_proof(block_str: str, public_pem: bytes) -> bool:
     """
     Verifies that the embedded hash meets DIFFICULTY and that the ECDSA signature checks out.
     """
-    raw_sig  = bytes.fromhex(block_str[-128:])
+    raw_sig = bytes.fromhex(block_str[-128:])
     embedded = block_str[-192:-128]
-    body     = block_str[:-192]
+    body = block_str[:-192]
 
     recalc = hashlib.sha256(body.encode('utf-8')).hexdigest()
     if not recalc.startswith('0' * DIFFICULTY):
@@ -292,7 +292,7 @@ def is_valid_proof(block_str: str, public_pem: bytes) -> bool:
 # ---------------------------------------------------------------------------
 # Mempool operations
 
-def mempool_push(tx: dict):   # MICHAEL AMENDED
+def mempool_push(tx: dict):  # MICHAEL AMENDED
     """
     Add a transaction dict to the mempool
     """
@@ -301,8 +301,9 @@ def mempool_push(tx: dict):   # MICHAEL AMENDED
     if trans_id is None:
         trans_id = str(uuid.uuid4())
         tx['TransID'] = trans_id
-    mempool[trans_id] = tx 
-    mempool[trans_id]["Status"] = "Ready"  
+    mempool[trans_id] = tx
+    mempool[trans_id]["Status"] = "Ready"
+
 
 def mempool_pull() -> Tuple[Optional[str], Optional[dict]]:  # MICHAEL AMENDED
     """
@@ -310,11 +311,11 @@ def mempool_pull() -> Tuple[Optional[str], Optional[dict]]:  # MICHAEL AMENDED
     Returns: The oldest 'ready' transaction and its Transaction ID
     and changes its status in mempool to 'processing'
     """
-    for tid, entry in mempool.items(): 
-        if entry.get("Status") == "Ready":      
-            mempool[tid]["Status"] = "Processing"  
-            return tid, entry   
-    return None, None 
+    for tid, entry in mempool.items():
+        if entry.get("Status") == "Ready":
+            mempool[tid]["Status"] = "Processing"
+            return tid, entry
+    return None, None
 
 
 def ready_blocks() -> Dict[str, dict]:
@@ -343,26 +344,28 @@ def is_valid_block(new_block: Block, previous_block: Block) -> bool:
     """
     # Index continuity
     if new_block.index != previous_block.index + 1:
-        print(f"Invalid index: {new_block.index} vs {previous_block.index+1}")
+        print(f"Invalid index: {new_block.index} vs {previous_block.index + 1}")
         return False
-    
+
     # Parent linkage
     if new_block.previous_hash != previous_block.index + 1:
         print("Invalid previous_hash linkage")
         return False
-    
+
     # Recompute and verify proof-of-work & signature
-    body = new_block.header_bytes().decode('latin1') # header_bytes + data are in chain string already
+    body = new_block.header_bytes().decode('latin1')  # header_bytes + data are in chain string already
     # header_bytes is only index|timestamp|prev_hash|merkle|nonce
     # block string is header + merkle/data/nonce/… so we trust is_valid_proof
-    if not is_valid_proof( previous_block.hash + new_block.header_bytes(), new_block.transactions ):
+    if not is_valid_proof(previous_block.hash + new_block.header_bytes().decode(),
+                          json.dumps(new_block.transactions).encode('utf-8')):
         # is_valid_proof takes (block_str, public_pem)
         block_str = new_block.header_bytes().hex() + new_block.hash
-        if not is_valid_proof(block_str, new_block.public_pem):
+        if not is_valid_proof(block_str, generate_key_pair()[1]):
             print("Invalid PoW or signature")
             return False
-        
+
     return True
+
 
 def get_block_work(block: Block) -> int:
     """
@@ -371,6 +374,7 @@ def get_block_work(block: Block) -> int:
     """
     return 1
 
+
 def add_block(new_block: Block) -> bool:
     """Append or orphan or fork based on parent existence."""
     h = new_block.hash
@@ -378,7 +382,7 @@ def add_block(new_block: Block) -> bool:
 
     if h in blocks_by_hash:
         return False
-    
+
     blocks_by_hash[h] = new_block
 
     parent_work = cumulative_work.get(parent, 0)
@@ -388,7 +392,7 @@ def add_block(new_block: Block) -> bool:
         tips.remove(parent)
     tips.add(h)
 
-    children = [ch for ch , blk in orphans.items() if blk.previous_hash == h]
+    children = [ch for ch, blk in orphans.items() if blk.previous_hash == h]
     for ch in children:
         child_blk = orphans.pop(ch)
         add_block(child_blk)
@@ -399,19 +403,20 @@ def add_block(new_block: Block) -> bool:
     resolve_fork()
     return True
 
+
 def resolve_fork() -> None:
     """Adopt the heaviest branch among forks."""
     global main_tip, chain
 
     if not tips:
         return
-    
+
     best_tip = max(tips, key=lambda h: cumulative_work.get(h, 0))
 
     if main_tip is not None and \
-        cumulative_work.get(best_tip, 0) <= cumulative_work.get(main_tip, 0):
+            cumulative_work.get(best_tip, 0) <= cumulative_work.get(main_tip, 0):
         return
-    
+
     new_chain: List[Block] = []
     cursor = best_tip
     while cursor in blocks_by_hash:
@@ -423,7 +428,8 @@ def resolve_fork() -> None:
     chain[:] = new_chain
     main_tip = best_tip
 
-    print(f"⧫ Reorganized: new tip {best_tip} at height {len(chain)-1}")
+    print(f"⧫ Reorganized: new tip {best_tip} at height {len(chain) - 1}")
+
 
 def handle_incoming_block(raw_data: bytes) -> None:
     """Deserialize, validate, broadcast approval/rejection."""
@@ -468,31 +474,40 @@ def handle_incoming_block(raw_data: bytes) -> None:
         orphans[bhash] = new_block
         print(f"Orphaned block {idx} (parent {prev_hash[:8]} not found)")
 
+
 def save_block_to_disk(block: Block) -> None:
     """Append serialized block to CHAIN_LOG."""
     with open('CHAIN_LOG', 'a') as file:
-        file.write(block.header_bytes() + "\n")
+        file.write(block.header_bytes())
+        file.write("\n")
+        file.write(json.dumps(block.transactions))
+        file.write("\n")
+
 
 def load_chain_from_disk() -> None:
     """Read CHAIN_LOG and rebuild in-memory chain."""
+    lines = []
     with open('CHAIN_LOG', 'r') as file:
         lines = file.readlines()
-        for line in lines:
-            chain.append(read_block(line))
-            
+    for i in range(0, len(lines), 2):
+        header_bytes = struct.unpack("IQ32s32sI", lines[i].encode("utf-8"))
+        tx = json.loads(lines[i + 1])
+        x = Block(header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3], header_bytes[4], tx)
+        chain.append(x)
+
 
 def print_chain() -> None:
     """Debug: print index, hash, tx count for each block."""
     for block in chain:
-        print("Index: "+ block.index + "\n)
-        print("Hash: " + block.hash + "\n")
-        print("Tx count: " + len(block.transactions))
+        print("Index: " + str(block.index) + "\n")
+        print("Hash: " + str(block.hash) + "\n")
+        print("Tx count: " + str(len(block.transactions)))
         print("\n\n")
-            
 
-#def get_chain_height() -> int:
-#    """Return current tip height."""
-#    return len(chain) - 1
+        # def get_chain_height() -> int:
+        #    """Return current tip height."""
+        #    return len(chain) - 1
+
 
 def find_block_by_hash(hash_value: str) -> Optional[Block]:
     """Locate a block by its hash in chain or orphans."""
