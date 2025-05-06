@@ -463,7 +463,7 @@ def handle_incoming_block(raw_data: bytes) -> None:
 
 def save_block_to_disk(block: Block) -> None:
     """Append serialized block to CHAIN_LOG."""
-    pass  # TODO
+    block.header_bytes()
 
 def load_chain_from_disk() -> None:
     """Read CHAIN_LOG and rebuild in-memory chain."""
