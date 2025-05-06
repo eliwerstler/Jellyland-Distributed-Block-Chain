@@ -463,15 +463,25 @@ def handle_incoming_block(raw_data: bytes) -> None:
 
 def save_block_to_disk(block: Block) -> None:
     """Append serialized block to CHAIN_LOG."""
-    block.header_bytes()
+    with open('CHAIN_LOG', 'a') as file:
+        file.write(block.header_bytes() + "\n")
 
 def load_chain_from_disk() -> None:
     """Read CHAIN_LOG and rebuild in-memory chain."""
-    pass  # TODO
+    with open('CHAIN_LOG', 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            chain.append(read_block(line))
+            
 
 def print_chain() -> None:
     """Debug: print index, hash, tx count for each block."""
-    pass  # TODO
+    for block in chain:
+        print("Index: "+ block.index + "\n)
+        print("Hash: " + block.hash + "\n")
+        print("Tx count: " + len(block.transactions))
+        print("\n\n")
+            
 
 #def get_chain_height() -> int:
 #    """Return current tip height."""
@@ -479,4 +489,9 @@ def print_chain() -> None:
 
 def find_block_by_hash(hash_value: str) -> Optional[Block]:
     """Locate a block by its hash in chain or orphans."""
-    pass  # TODO
+    for block in chain:
+        if block.hash == hash_value:
+            return block
+    if hash_value in orphans:
+        return orphans[hash_value]
+    return None
