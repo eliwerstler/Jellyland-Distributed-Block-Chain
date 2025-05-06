@@ -5,6 +5,7 @@ import time
 import datetime
 import json
 import hashlib
+from itertools import zip_longest
 import struct
 import os
 from typing import List, Dict, Optional, Tuple, Set
@@ -117,10 +118,16 @@ def merkle_root(leaves: List[bytes]) -> str:
     Compute Merkle root of a list of byte-leaves.
     TODO: implement full Merkle tree logic here.
     """
+    leaves_copy = copy(leaves)
+    hashes = []
     if not leaves:
         return compute_hash(b'')
-    # stub; real implementation would pairwise-hash up the tree
-    return compute_hash(leaves[0])
+    while len(leaves_copy) > 1:
+        leaves_copy = [(i, j) if j is not None else (i,i) for i, j in zip_longest(leaves_copy[::2], leaves_copy[1::2])]
+        for (i, j) in leaves_copy:
+            hashes.append(compute_hash(i + j))
+        leaves_copy = hashes
+    return leaves[0]
 
 
 # ---------------------------------------------------------------------------
