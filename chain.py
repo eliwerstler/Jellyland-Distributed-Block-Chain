@@ -114,7 +114,7 @@ def compute_hash(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def get_merkle_root(leaves: List[bytes]) -> str:
+def merkle_root(leaves: List[bytes]) -> str:
     """
     Compute Merkle root of a list of byte-leaves.
     """
