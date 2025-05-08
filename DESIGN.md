@@ -1,5 +1,5 @@
 ## CSEE 4119 Spring 2025, Term Group Project  
-## Trisha, Eli, Michael  
+## Trisha, Eli
 ## Blockchain Demo  
 
 ### Project Overview  

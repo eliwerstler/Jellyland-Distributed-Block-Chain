@@ -1,40 +1,54 @@
 ## CSEE 4119 Spring 2025, Term Group Project
 ## Blockchain Demo
 
+Overview
+----------------------------
+This project implements a simplified peer-to-peer blockchain system to record passenger arrivals and departures at various airports in the fictional Republic of Jellyland. Each airport runs as an independent node, maintains its own copy of the blockchain, mines blocks containing transactions, and broadcasts block proposals to peers. A tracker maintains the list of active airports. A separate passenger GUI allows users to check in at any available airport.
+
+
+Features  
+----------------------------
+- Peer-to-peer TCP network with one tracker and multiple airport peers  
+- Blockchain with proof-of-work and digital signature validation (ECDSA)  
+- Live transaction logging and block mining at each peer  
+- Fork resolution via longest chain rule  
+- Orphaned block handling  
+- GUI-based passenger interaction (arrival/departure)  
+- Persistent storage of blockchain via `chain.log`
+
+Architecture  
+----------------------------
+- `tracker.py`: Central server that manages peer registration and updates peer lists.
+- `airport.py`: Peer node representing an airport that mines blocks and maintains a local chain.
+- `passenger_gui.py`: Graphical interface for submitting arrival/departure requests.
+- `chain.py`: Core blockchain logic (block format, proof-of-work, fork handling, validation, persistence).
+- `config.py`: Global configuration (difficulty, log paths, port defaults).
 
 Block Format & Message Types
 ----------------------------
 
-    format_string = '=9s20sIIIB'  # Format for struct
-    # Packet header format (struct format).  
-    # Different message types do not use all fields.
-    # =   : This forces the struct to actual size, not memory aligned
-    # 9s  : JELLYLAND                      (9-byte string) Immutable
-    # 20s : Airport Name                   (20-byte string)
-    # I   : TCP Listening Port             (4-byte unsigned integer)
-    # I   : Sequence No.                   (4-byte unsigned integer)
-    # I   : Acknowledgement No.            (4-byte unsigned integer)      
-    # B   : Message Type                   (1 Byte unsigned integer) 
-    #       10  REGISTER        - Peer Airport joining the network (airport.py -> tracker.py)
-    #       20  DEREGISTER      - Peer airport leaving the network (airport.py -> tracker.py)
-    #       30  DIRECTORY       - Peer directory Send ( tracker.py -> airport.py ). 
-    #                             Also used by passenger_gui.py to request directory.
-    #       40  PASSENGER       - Passenger Transaction (Arrival/Departure) GUI -> airport.py
-    #       50  PROPOSAL        - Airport proposing a new block ( airport.py -> all other airport.py peers)
-    #       60  APPROVAL        - Approve proposed block ( airport.py -> all other airport.py peers)
-    #       70  REJECTION       - Reject proposed block ( airport.py -> all other airport.py peers)
-    #       80  BLOCK           - Block ( airport.py -> all other airport.py peers)
-    #       99  ANOMALY         - Mismatch in Chain (fork)  ( airport.py -> all other airport.py peers )
-    # Payload (variable length)
+| Type | Purpose                            | Sent From → To        |
+|------|------------------------------------|------------------------|
+| 10   | REGISTER peer                      | airport.py → tracker.py  
+| 20   | DEREGISTER peer                    | airport.py → tracker.py  
+| 30   | DIRECTORY request/response         | airport.py / GUI ↔ tracker.py  
+| 40   | PASSENGER transaction              | passenger_gui.py → airport.py  
+| 50   | BLOCK PROPOSAL                     | airport.py → all other airport.py 
 
+Block Format  
+----------------------------
+Blocks are serialized as strings with the following fields:
+- Block Index  
+- Timestamp  
+- Chain Size  
+- Previous Hash (8-char)  
+- Data Size  
+- Serialized Transaction Dictionary  
+- Nonce (8-digit hex)  
+- Block Hash (64-character hex)  
+- Digital Signature (r||s, 128 hex chars)
 
-Passenger Arrival/Departure Message
------------------------------------
-
-passenger.gui will send a message type '40' to airport.py with a dictionary in its
-payload with the following fields ready for adding to the blockchain:
-
-{'Action': 'Arrival', 'TimeDate': '2025-04-24 08:06:28', 'Airport': 'Quaintville', 'Name': 'Eden Plunkera', 'PassportNo': '78834414', 'Nationality': 'Atlantis', 'DoB': '1991-11-30', 'Expiry': '2027-12-15', 'Visa': 'Yes'}
+Each block is saved to `chain.log`.
 
 Command lines for testing
 -------------------------
@@ -65,8 +79,19 @@ the arrival/departure message to the airport.py corresponding
 to the airport they selected.  Airports are identified by their
 listening TCP port.
 
-
-
-
-
-
+Blockchain Behavior
+----------------------------
+### Mining
+- Transactions are mined into blocks with a proof-of-work difficulty of DIFFICULTY = 2.
+- Each block is signed using ECDSA (secp256k1).
+- Mining output is printed in the terminal.
+### Fork Handling
+- If two peers mine a block simultaneously, a fork may occur.
+- The system keeps both forks and selects the one with greater cumulative work (longest chain).
+- Nodes reorganize their chain automatically via resolve_fork().
+### Orphan Handling
+- If a peer receives a block with an unknown parent, it stores it in orphans.
+- When the parent later arrives, the orphaned block is validated and added.
+### Persistence
+- Mined blocks are saved to chain.log.
+- On restart, a node reads chain.log to reconstruct its in-memory chain.
