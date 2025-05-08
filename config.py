@@ -12,4 +12,5 @@ DIFFICULTY: int = 2  # TODO: tune difficulty based on demo hardware
 # Persistence Settings
 
 # File path to append and read chain blocks
-CHAIN_LOG: str = os.path.join(os.path.dirname(__file__), 'chain.log')  # TODO: ensure write permissions
+CHAIN_LOG = "chain.log"
+# CHAIN_LOG: str = os.path.join(os.path.dirname(__file__), 'chain.log')  # TODO: ensure write permissions

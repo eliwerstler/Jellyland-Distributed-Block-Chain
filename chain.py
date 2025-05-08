@@ -478,22 +478,19 @@ def handle_incoming_block(raw_data: bytes) -> None:
 def save_block_to_disk(block: Block) -> None:
     """Append serialized block to CHAIN_LOG."""
     with open('CHAIN_LOG', 'a') as file:
-        file.write(block.header_bytes())
-        file.write("\n")
-        file.write(json.dumps(block.transactions))
-        file.write("\n")
+        file.write(block + '\n')
 
 
-def load_chain_from_disk() -> None:
+def load_chain_from_disk(blockchain: list) -> None:
     """Read CHAIN_LOG and rebuild in-memory chain."""
-    lines = []
+    if not os.path.exists(CHAIN_LOG):
+        return
     with open('CHAIN_LOG', 'r') as file:
-        lines = file.readlines()
-    for i in range(0, len(lines), 2):
-        header_bytes = struct.unpack("IQ32s32sI", lines[i].encode("utf-8"))
-        tx = json.loads(lines[i + 1])
-        x = Block(header_bytes[0], header_bytes[1], header_bytes[2], header_bytes[3], header_bytes[4], tx)
-        chain.append(x)
+        for line in file:
+            line = line.strip()
+            if line:
+                blockchain.append(line)
+    print(f"Loaded {len(blockchain)} blocks from disk")
 
 
 def print_chain() -> None:

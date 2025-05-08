@@ -35,6 +35,8 @@ from chain import (
     mempool_pull,
     ready_blocks,
     handle_incoming_block,
+    load_chain_from_disk,
+    save_block_to_disk
 )
 
 def encode_msg(airport_name, tcp_rcv_port, seq_no, ack_no, msg_type, payload):
@@ -228,6 +230,7 @@ if __name__ == '__main__':
     difficulty = 4 # The number of leading zeros in the hash for proof of work
     mempool = {}   # This is a queue of pending passenger transactions; a dictionary of dictionaries
     blockchain = [] # This is a list of dictionaries where we store the chain (multiple blocks) - A LIST NOW NOT A DICT
+    load_chain_from_disk(blockchain)
     block_index = 0  # Starting block index (height)
 
     # Generate key pair
@@ -299,6 +302,7 @@ if __name__ == '__main__':
                 # Right now we don't record which block each transaction goes into. We might need to in 
                 # case a bloack is rejected/dropped and we need to add the included transactions again.
                 blockchain.append(block)
+                save_block_to_disk(block)
                 propose_block(block) # Propose new block to all other peer airports
 
                 
