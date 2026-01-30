@@ -1,4 +1,4 @@
-## CSEE 4119 Spring 2025, Term Group Project
+## CSEE 4119 Spring 2025, Jellyland Distributed Block Chain
 ## Blockchain Demo
 
 Overview
@@ -94,4 +94,5 @@ Blockchain Behavior
 - When the parent later arrives, the orphaned block is validated and added.
 ### Persistence
 - Mined blocks are saved to chain.log.
+
 - On restart, a node reads chain.log to reconstruct its in-memory chain.
