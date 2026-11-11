@@ -1,5 +1,16 @@
-## CSEE 4119 Spring 2025, Jellyland Distributed Block Chain
-## Blockchain Demo
+# Jellyland: Distributed Blockchain
+
+**A peer-to-peer blockchain, built from raw TCP sockets, that records passenger arrivals and departures across a network of airport nodes.**
+
+Each airport is an independent node that mines blocks with proof of work, signs transactions with ECDSA, and gossips new blocks to its peers. When nodes disagree, they converge on the heaviest chain and handle orphaned blocks. A Tkinter GUI lets passengers check in at any airport.
+
+![Jellyland](image/jellyland_frontpage.png)
+
+**My role:** I designed the chain skeleton and wrote the core consensus logic in `chain.py` and `airport.py`. That includes block validation (index, hash linkage, PoW), handling incoming blocks (deserialize, validate, add or orphan), heaviest-chain fork resolution, mempool fixes, and on-disk persistence.
+
+**Stack:** Python · TCP sockets · ECDSA · Tkinter · built with Trisha Srikanth and MokeyTech for Columbia's CSEE 4119 (Computer Networks), Spring 2025.
+
+---
 
 Overview
 ----------------------------
